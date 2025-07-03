@@ -52,8 +52,8 @@
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import Environment from '@/models/Environment'
 
-const width = 800
-const height = 600
+const width = 1200
+const height = 1000
 const canvas = ref(null)
 const environment = ref(null)
 
@@ -119,8 +119,20 @@ function resetSimulation() {
 function drawEnvironment(ctx, env) {
   ctx.clearRect(0, 0, env.width, env.height)
 
+  // рисуем зоны травы
+  if (env.grassZones) {
+    for (const zone of env.grassZones) {
+      for (const food of zone.foodItems) {
+        ctx.fillStyle = 'yellow'
+        ctx.beginPath()
+        ctx.arc(food.x, food.y, 3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  }
+
   for (const prey of env.preys) {
-    drawEntity(ctx, prey, 'limegreen')
+    drawEntity(ctx, prey, 'deepskyblue')
   }
 
   for (const hunter of env.hunters) {
@@ -165,9 +177,7 @@ let animationFrameId
 function animate() {
   const ctx = canvas.value.getContext('2d')
   if (isRunning.value) {
-    for (let i = 0; i < simulationSpeed.value; i++) {
-      environment.value?.update()
-    }
+    environment.value?.update(simulationSpeed.value)
   }
   drawEnvironment(ctx, environment.value)
   animationFrameId = requestAnimationFrame(animate)

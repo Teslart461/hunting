@@ -8,7 +8,7 @@ export default class Prey {
     this.direction = Math.random() * 2 * Math.PI
   }
 
-  move(width, height, hunters, simulationSpeed = 1) {
+  move(width, height, hunters, grassZones, simulationSpeed = 1) {
     const radius = 6
     // 1. Решаем, куда бежать
     const visibleHunters = hunters.filter((h) => this.isInFOV(h.x, h.y, this.viewDistance))
@@ -25,18 +25,17 @@ export default class Prey {
           closest = h
         }
       }
-      if (closest && minD < 100) {
+      if (closest) {
         const dx = this.x - closest.x,
           dy = this.y - closest.y,
           dist = Math.hypot(dx, dy)
         this.direction = Math.atan2(dy, dx)
         this.x += (dx / dist) * this.speed * simulationSpeed
         this.y += (dy / dist) * this.speed * simulationSpeed
-      } else {
-        this._randomStep(simulationSpeed)
       }
     } else {
-      this._randomStep(simulationSpeed)
+      // Хищников нет — ищем еду и идём к ней
+      this.seekFoodOrWander(grassZones, simulationSpeed)
     }
 
     // 2. Отскок от стен
@@ -69,19 +68,58 @@ export default class Prey {
     this.direction += (Math.random() - 0.5) * 0.3
   }
 
+  // Метод для поиска еды или случайного блуждания
+  seekFoodOrWander(grassZones, simulationSpeed) {
+    let closestFood = null
+    let closestZone = null
+    let minD = Infinity
+
+    for (const zone of grassZones) {
+      for (const food of zone.foodItems) {
+        const d = Math.hypot(food.x - this.x, food.y - this.y)
+        if (d < minD && d < this.viewDistance) {
+          minD = d
+          closestFood = food
+          closestZone = zone
+        }
+      }
+    }
+
+    if (closestFood) {
+      // Двигаемся к еде
+      const dx = closestFood.x - this.x
+      const dy = closestFood.y - this.y
+      const dist = Math.hypot(dx, dy)
+      this.direction = Math.atan2(dy, dx)
+      this.x += (dx / dist) * this.speed * simulationSpeed
+      this.y += (dy / dist) * this.speed * simulationSpeed
+
+      // Если очень близко — едим
+      if (dist < 5) {
+        const idx = closestZone.foodItems.indexOf(closestFood)
+        if (idx !== -1) {
+          closestZone.foodItems.splice(idx, 1)
+        }
+      }
+    } else {
+      this.randomStep(simulationSpeed)
+    }
+  }
+
+  // Проверяем, видно ли цель в поле зрения
   isInFOV(targetX, targetY, maxDistance = this.viewDistance) {
-    const dx = targetX - this.x,
-      dy = targetY - this.y
+    const dx = targetX - this.x
+    const dy = targetY - this.y
     const dist = Math.hypot(dx, dy)
     if (dist > maxDistance) return false
-    let ang = Math.atan2(dy, dx),
-      diff = ang - this.direction
+    let ang = Math.atan2(dy, dx)
+    let diff = ang - this.direction
     while (diff > Math.PI) diff -= 2 * Math.PI
     while (diff < -Math.PI) diff += 2 * Math.PI
     return Math.abs(diff) < this.fov / 2
   }
 
-  _randomStep(simulationSpeed) {
+  randomStep(simulationSpeed) {
     this.direction += (Math.random() - 0.5) * 0.5
     this.x += Math.cos(this.direction) * this.speed * simulationSpeed
     this.y += Math.sin(this.direction) * this.speed * simulationSpeed
