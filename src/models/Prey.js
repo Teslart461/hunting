@@ -1,14 +1,16 @@
 export default class Prey {
-  constructor(x, y, speed = 0.4, fov = 120, viewDistance = 150) {
+  constructor(x, y, speed = 0.4, fov = 120, viewDistance = 150, energyConsumption = 0.05) {
     this.x = x
     this.y = y
     this.speed = speed
     this.fov = (fov * Math.PI) / 180
     this.viewDistance = viewDistance
     this.direction = Math.random() * 2 * Math.PI
-    this.energy = 80 // стартовая энергия
-    this.isDead = false
 
+    this.energy = 80 // стартовая энергия
+    this.energyConsumption = energyConsumption
+    this.isDead = false
+    this.reproductionCooldown = 1000
     this.state = 'wander' // состояния: wander, hungry, seekFood
   }
 
@@ -99,10 +101,15 @@ export default class Prey {
 
     // Тратим энергию за пройденное расстояние
     const distMoved = Math.hypot(this.x - oldX, this.y - oldY)
-    this.energy -= distMoved * 0.1 // Коэффициент под баланс
+    this.energy -= distMoved * this.energyConsumption
     if (this.energy <= 0) {
       this.energy = 0
       this.isDead = true
+    }
+
+    //Кулдаун для размножения
+    if (this.reproductionCooldown > 0) {
+      this.reproductionCooldown--
     }
   }
 
@@ -136,8 +143,7 @@ export default class Prey {
       // съесть, если достаточно близко
       if (dist < 5) {
         closestFood.isEaten = true
-        this.energy += 30
-        if (this.energy > 100) this.energy = 100
+        this.energy = Math.min(this.energy + 30, 100)
       }
     } else {
       // если еды нет в пределах досягаемости — блуждаем
@@ -162,5 +168,27 @@ export default class Prey {
     this.direction += (Math.random() - 0.5) * 0.5
     this.x += Math.cos(this.direction) * this.speed * simulationSpeed
     this.y += Math.sin(this.direction) * this.speed * simulationSpeed
+  }
+
+  tryReproduce() {
+    const energyCost = 40
+    if (this.isDead) return null
+    if (this.reproductionCooldown <= 0 && this.energy >= energyCost) {
+      this.reproductionCooldown = 500 // например, 500 кадров до следующего размножения
+      this.energy -= energyCost
+
+      // Создаём потомка рядом
+      const offsetX = (Math.random() - 0.5) * 20
+      const offsetY = (Math.random() - 0.5) * 20
+      const baby = new Prey(this.x + offsetX, this.y + offsetY)
+      baby.energy = energyCost / 2
+      // копируем параметры родителя
+      baby.speed = this.speed
+      baby.fov = this.fov
+      baby.viewDistance = this.viewDistance
+      baby.reproductionCooldown = 500
+      return baby
+    }
+    return null
   }
 }

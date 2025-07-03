@@ -1,13 +1,16 @@
 export default class Hunter {
-  constructor(x, y, speed = 0.3, fov = 90, viewDistance = 150) {
+  constructor(x, y, speed = 0.3, fov = 90, viewDistance = 150, energyConsumption = 0.07) {
     this.x = x
     this.y = y
     this.speed = speed
     this.fov = (fov * Math.PI) / 180
     this.viewDistance = viewDistance
     this.direction = Math.random() * 2 * Math.PI
+
     this.energy = 90 // стартовая энергия
+    this.energyConsumption = energyConsumption
     this.isDead = false
+    this.reproductionCooldown = 1000
   }
 
   move(width, height, preys, simulationSpeed = 1) {
@@ -43,10 +46,9 @@ export default class Hunter {
 
           // Если приблизился достаточно, "съедаем" жертву и восстанавливаем энергию
           if (dist < radius + 2) {
-            closest.isEaten = true // отметим жертву для удаления из симуляции
             closest.isDead = true // жертва умирает
-            this.energy += 50
-            if (this.energy > 100) this.energy = 100
+            const eatEnergy = 50
+            this.energy = Math.min(this.energy + eatEnergy, 100)
           }
         }
       } else {
@@ -83,16 +85,19 @@ export default class Hunter {
       this.y += Math.sin(this.direction) * this.speed * simulationSpeed
     }
 
-    // 3. шум
+    // Шум
     this.direction += (Math.random() - 0.5) * 0.2
 
     // Тратим энергию за пройденное расстояние
     const distMoved = Math.hypot(this.x - oldX, this.y - oldY)
-    this.energy -= distMoved * 0.1
+    this.energy -= distMoved * this.energyConsumption
     if (this.energy <= 0) {
       this.energy = 0
       this.isDead = true // умираем
     }
+
+    //Кулдаун размножения
+    if (this.reproductionCooldown > 0) this.reproductionCooldown--
   }
 
   isInFOV(targetX, targetY, maxDistance = this.viewDistance) {
@@ -111,5 +116,26 @@ export default class Hunter {
     this.direction += (Math.random() - 0.5) * 0.5
     this.x += Math.cos(this.direction) * this.speed * simulationSpeed
     this.y += Math.sin(this.direction) * this.speed * simulationSpeed
+  }
+
+  tryReproduce() {
+    const energyCost = 50
+    if (this.isDead) return null
+    if (this.reproductionCooldown === 0 && this.energy >= energyCost) {
+      this.reproductionCooldown = 800
+      this.energy -= energyCost
+
+      const offsetX = (Math.random() - 0.5) * 20
+      const offsetY = (Math.random() - 0.5) * 20
+      const baby = new Hunter(this.x + offsetX, this.y + offsetY)
+      baby.energy = energyCost / 2
+      // копируем параметры родителя
+      baby.speed = this.speed
+      baby.fov = this.fov
+      baby.viewDistance = this.viewDistance
+      baby.reproductionCooldown = 500
+      return baby
+    }
+    return null
   }
 }

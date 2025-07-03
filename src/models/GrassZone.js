@@ -14,7 +14,7 @@ export default class GrassZone {
       this.food += 0.02
     }
     // новая часть: иногда добавляем еду в виде объектов
-    if (this.foodItems.length < this.maxFood / 2) {
+    if (this.foodItems.length < this.maxFood / 2 && Math.random() < 0.02) {
       this.spawnFoodItem()
     }
   }

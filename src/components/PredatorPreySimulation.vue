@@ -8,7 +8,16 @@
         <input type="range" min="0.5" max="5" step="0.1" v-model.number="simulationSpeed" />
       </div>
 
+      <div class="control-group">
+        <label>Количество зон травы: {{ initialGrassZoneCount }}</label>
+        <input type="range" min="1" max="10" step="1" v-model.number="initialGrassZoneCount" />
+      </div>
+
       <h3>Жертвы</h3>
+      <div class="control-group">
+        <label>Начальное количество: {{ initialPreyCount }}</label>
+        <input type="range" min="5" max="100" step="1" v-model.number="initialPreyCount" />
+      </div>
       <div class="control-group">
         <label>Скорость: {{ preySpeed.toFixed(1) }}</label>
         <input type="range" min="0.1" max="5" step="0.1" v-model.number="preySpeed" />
@@ -21,8 +30,32 @@
         <label>Дальность обзора: {{ preyViewDistance }}</label>
         <input type="range" min="20" max="300" step="10" v-model.number="preyViewDistance" />
       </div>
+      <div class="control-group">
+        <label>Трата энергии при движении: {{ preyEnergyConsumption.toFixed(3) }}</label>
+        <input
+          type="range"
+          min="0"
+          max="0.05"
+          step="0.001"
+          v-model.number="preyEnergyConsumption"
+        />
+      </div>
+      <div class="control-group">
+        <label>Время до размножения: {{ preyReproductionCooldown }}</label>
+        <input
+          type="range"
+          min="0"
+          max="2000"
+          step="50"
+          v-model.number="preyReproductionCooldown"
+        />
+      </div>
 
       <h3>Хищники</h3>
+      <div class="control-group">
+        <label>Начальное количество: {{ initialHunterCount }}</label>
+        <input type="range" min="1" max="50" step="1" v-model.number="initialHunterCount" />
+      </div>
       <div class="control-group">
         <label>Скорость: {{ hunterSpeed.toFixed(1) }}</label>
         <input type="range" min="0.1" max="5" step="0.1" v-model.number="hunterSpeed" />
@@ -35,11 +68,29 @@
         <label>Дальность обзора: {{ hunterViewDistance }}</label>
         <input type="range" min="20" max="300" step="10" v-model.number="hunterViewDistance" />
       </div>
+      <div class="control-group">
+        <label>Трата энергии при движении: {{ hunterEnergyConsumption.toFixed(3) }}</label>
+        <input
+          type="range"
+          min="0"
+          max="0.05"
+          step="0.001"
+          v-model.number="hunterEnergyConsumption"
+        />
+      </div>
+      <div class="control-group">
+        <label>Время до размножения: {{ hunterReproductionCooldown }}</label>
+        <input
+          type="range"
+          min="0"
+          max="2000"
+          step="50"
+          v-model.number="hunterReproductionCooldown"
+        />
+      </div>
 
       <button @click="toggleSimulation">{{ isRunning ? 'Пауза' : 'Старт' }}</button>
       <button @click="resetSimulation">Сбросить</button>
-
-      <p>Живых жертв: {{ preyCount }}</p>
     </aside>
 
     <main class="main-content">
@@ -59,61 +110,91 @@ const environment = ref(null)
 
 const simulationSpeed = ref(1.0)
 
+const initialGrassZoneCount = ref(3)
+
 const preySpeed = ref(0.4)
 const preyFov = ref(120)
 const preyViewDistance = ref(150)
+const initialPreyCount = ref(30)
+const preyEnergyConsumption = ref(0.01)
+const preyReproductionCooldown = ref(500)
 
 const hunterSpeed = ref(0.3)
 const hunterFov = ref(90)
 const hunterViewDistance = ref(150)
+const initialHunterCount = ref(3)
+const hunterEnergyConsumption = ref(0.02)
+const hunterReproductionCooldown = ref(800)
 
 const isRunning = ref(true)
 
-const preyCount = computed(() => (environment.value ? environment.value.preys.length : 0))
-
 function createEnvironment() {
-  const env = new Environment(width, height, 30, 3)
+  const env = new Environment(
+    width,
+    height,
+    initialPreyCount.value,
+    initialHunterCount.value,
+    initialGrassZoneCount.value,
+  )
   env.preys.forEach((prey) => {
     prey.speed = preySpeed.value
     prey.fov = (preyFov.value * Math.PI) / 180
     prey.viewDistance = preyViewDistance.value
+    prey.energyConsumption = preyEnergyConsumption.value
+    prey.reproductionCooldown = preyReproductionCooldown.value
   })
   env.hunters.forEach((hunter) => {
     hunter.speed = hunterSpeed.value
     hunter.fov = (hunterFov.value * Math.PI) / 180
     hunter.viewDistance = hunterViewDistance.value
+    hunter.energyConsumption = hunterEnergyConsumption.value
+    hunter.reproductionCooldown = hunterReproductionCooldown.value
   })
   return env
 }
 
-watch([preySpeed, preyFov, preyViewDistance], () => {
-  if (!environment.value) return
-  environment.value.preys.forEach((prey) => {
-    prey.speed = preySpeed.value
-    prey.fov = (preyFov.value * Math.PI) / 180
-    prey.viewDistance = preyViewDistance.value
-  })
-})
+watch(
+  [preySpeed, preyFov, preyViewDistance, preyEnergyConsumption, preyReproductionCooldown],
+  () => {
+    if (!environment.value) return
+    environment.value.preys.forEach((prey) => {
+      prey.speed = preySpeed.value
+      prey.fov = (preyFov.value * Math.PI) / 180
+      prey.viewDistance = preyViewDistance.value
+      prey.energyConsumption = preyEnergyConsumption.value
+      prey.reproductionCooldown = preyReproductionCooldown.value
+    })
+  },
+)
 
-watch([hunterSpeed, hunterFov, hunterViewDistance], () => {
-  if (!environment.value) return
-  environment.value.hunters.forEach((hunter) => {
-    hunter.speed = hunterSpeed.value
-    hunter.fov = (hunterFov.value * Math.PI) / 180
-    hunter.viewDistance = hunterViewDistance.value
-  })
-})
+watch(
+  [hunterSpeed, hunterFov, hunterViewDistance, hunterEnergyConsumption, hunterReproductionCooldown],
+  () => {
+    if (!environment.value) return
+    environment.value.hunters.forEach((hunter) => {
+      hunter.speed = hunterSpeed.value
+      hunter.fov = (hunterFov.value * Math.PI) / 180
+      hunter.viewDistance = hunterViewDistance.value
+      hunter.energyConsumption = hunterEnergyConsumption.value
+      hunter.reproductionCooldown = hunterReproductionCooldown.value
+    })
+  },
+)
 
-watch(simulationSpeed, (newSpeed) => {
-  // Можно будет использовать для изменения частоты обновлений или ускорения
+watch([initialPreyCount, initialHunterCount, , initialGrassZoneCount], () => {
+  resetSimulation()
 })
 
 function toggleSimulation() {
   isRunning.value = !isRunning.value
+  if (isRunning.value) {
+    animate()
+  }
 }
 
 function resetSimulation() {
   environment.value = createEnvironment()
+  isRunning.value = false
 }
 
 function drawEnvironment(ctx, env) {
@@ -185,7 +266,7 @@ function animate() {
 
 onMounted(() => {
   environment.value = createEnvironment()
-  animate()
+  isRunning.value = false
 })
 
 onBeforeUnmount(() => {
