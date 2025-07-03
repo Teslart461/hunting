@@ -6,37 +6,58 @@ export default class Hunter {
     this.fov = (fov * Math.PI) / 180
     this.viewDistance = viewDistance
     this.direction = Math.random() * 2 * Math.PI
+    this.energy = 90 // стартовая энергия
+    this.isDead = false
   }
 
   move(width, height, preys, simulationSpeed = 1) {
+    if (this.isDead) return // мёртвый не двигается
+
     const radius = 6
-    // 1. Идём к ближайшей видимой жертве
-    const visible = preys.filter((p) => this.isInFOV(p.x, p.y, this.viewDistance))
-    if (visible.length > 0) {
-      let closest = null,
-        minD = Infinity
-      for (const p of visible) {
-        const dx = p.x - this.x,
-          dy = p.y - this.y,
-          d = Math.hypot(dx, dy)
-        if (d < minD) {
-          minD = d
-          closest = p
+    let oldX = this.x
+    let oldY = this.y
+
+    // Если энергия меньше 90%, охотимся
+    if (this.energy < 90) {
+      // Ищем ближайшую видимую жертву
+      const visible = preys.filter((p) => this.isInFOV(p.x, p.y, this.viewDistance))
+      if (visible.length > 0) {
+        let closest = null,
+          minD = Infinity
+        for (const p of visible) {
+          const dx = p.x - this.x,
+            dy = p.y - this.y,
+            d = Math.hypot(dx, dy)
+          if (d < minD) {
+            minD = d
+            closest = p
+          }
         }
-      }
-      if (closest) {
-        const dx = closest.x - this.x,
-          dy = closest.y - this.y,
-          dist = Math.hypot(dx, dy)
-        this.direction = Math.atan2(dy, dx)
-        this.x += (dx / dist) * this.speed * simulationSpeed
-        this.y += (dy / dist) * this.speed * simulationSpeed
+        if (closest) {
+          const dx = closest.x - this.x,
+            dy = closest.y - this.y,
+            dist = Math.hypot(dx, dy)
+          this.direction = Math.atan2(dy, dx)
+          this.x += (dx / dist) * this.speed * simulationSpeed
+          this.y += (dy / dist) * this.speed * simulationSpeed
+
+          // Если приблизился достаточно, "съедаем" жертву и восстанавливаем энергию
+          if (dist < radius + 2) {
+            closest.isEaten = true // отметим жертву для удаления из симуляции
+            closest.isDead = true // жертва умирает
+            this.energy += 50
+            if (this.energy > 100) this.energy = 100
+          }
+        }
+      } else {
+        this.randomStep(simulationSpeed)
       }
     } else {
-      this._randomStep(simulationSpeed)
+      // Энергия > 90%, просто гуляем
+      this.randomStep(simulationSpeed)
     }
 
-    // 2. Отскок от стен
+    // Отскок от стен
     let bounced = false
     if (this.x < radius) {
       this.x = radius + this.speed
@@ -64,6 +85,14 @@ export default class Hunter {
 
     // 3. шум
     this.direction += (Math.random() - 0.5) * 0.2
+
+    // Тратим энергию за пройденное расстояние
+    const distMoved = Math.hypot(this.x - oldX, this.y - oldY)
+    this.energy -= distMoved * 0.1
+    if (this.energy <= 0) {
+      this.energy = 0
+      this.isDead = true // умираем
+    }
   }
 
   isInFOV(targetX, targetY, maxDistance = this.viewDistance) {
@@ -78,7 +107,7 @@ export default class Hunter {
     return Math.abs(diff) < this.fov / 2
   }
 
-  _randomStep(simulationSpeed) {
+  randomStep(simulationSpeed) {
     this.direction += (Math.random() - 0.5) * 0.5
     this.x += Math.cos(this.direction) * this.speed * simulationSpeed
     this.y += Math.sin(this.direction) * this.speed * simulationSpeed

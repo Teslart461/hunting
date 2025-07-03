@@ -6,10 +6,18 @@ export default class Prey {
     this.fov = (fov * Math.PI) / 180
     this.viewDistance = viewDistance
     this.direction = Math.random() * 2 * Math.PI
+    this.energy = 80 // стартовая энергия
+    this.isDead = false
+
+    this.state = 'wander' // состояния: wander, hungry, seekFood
   }
 
   move(width, height, hunters, grassZones, simulationSpeed = 1) {
+    if (this.isDead) return // мёртвый не двигается
+
     const radius = 6
+    let oldX = this.x
+    let oldY = this.y
     // 1. Решаем, куда бежать
     const visibleHunters = hunters.filter((h) => this.isInFOV(h.x, h.y, this.viewDistance))
     if (visibleHunters.length > 0) {
@@ -32,10 +40,32 @@ export default class Prey {
         this.direction = Math.atan2(dy, dx)
         this.x += (dx / dist) * this.speed * simulationSpeed
         this.y += (dy / dist) * this.speed * simulationSpeed
+        this.state = 'wander' // при угрозе — игнорируем еду
       }
     } else {
-      // Хищников нет — ищем еду и идём к ней
-      this.seekFoodOrWander(grassZones, simulationSpeed)
+      // нет хищников — меняем состояние по энергии
+      if (this.energy < 20) {
+        this.state = 'seekFood'
+      } else if (this.energy > 30) {
+        this.state = 'wander'
+      } else {
+        this.state = 'hungry'
+      }
+
+      // поведение по состоянию
+      if (this.state === 'seekFood') {
+        this.seekFoodOrWander(grassZones, simulationSpeed)
+      } else if (this.state === 'hungry') {
+        // В состоянии "голодна" — с 50% вероятностью ищем еду, иначе гуляем
+        if (Math.random() < 0.5) {
+          this.seekFoodOrWander(grassZones, simulationSpeed)
+        } else {
+          this.randomStep(simulationSpeed)
+        }
+      } else {
+        // wander
+        this.randomStep(simulationSpeed)
+      }
     }
 
     // 2. Отскок от стен
@@ -66,6 +96,14 @@ export default class Prey {
 
     // 3. небольшой шум в направлении
     this.direction += (Math.random() - 0.5) * 0.3
+
+    // Тратим энергию за пройденное расстояние
+    const distMoved = Math.hypot(this.x - oldX, this.y - oldY)
+    this.energy -= distMoved * 0.1 // Коэффициент под баланс
+    if (this.energy <= 0) {
+      this.energy = 0
+      this.isDead = true
+    }
   }
 
   // Метод для поиска еды или случайного блуждания
@@ -74,6 +112,7 @@ export default class Prey {
     let closestZone = null
     let minD = Infinity
 
+    // Найти ближайший кусочек еды среди всех зон
     for (const zone of grassZones) {
       for (const food of zone.foodItems) {
         const d = Math.hypot(food.x - this.x, food.y - this.y)
@@ -85,8 +124,8 @@ export default class Prey {
       }
     }
 
+    // Если нашли — бежим к нему и, достигнув, помечаем isEaten
     if (closestFood) {
-      // Двигаемся к еде
       const dx = closestFood.x - this.x
       const dy = closestFood.y - this.y
       const dist = Math.hypot(dx, dy)
@@ -94,14 +133,14 @@ export default class Prey {
       this.x += (dx / dist) * this.speed * simulationSpeed
       this.y += (dy / dist) * this.speed * simulationSpeed
 
-      // Если очень близко — едим
+      // съесть, если достаточно близко
       if (dist < 5) {
-        const idx = closestZone.foodItems.indexOf(closestFood)
-        if (idx !== -1) {
-          closestZone.foodItems.splice(idx, 1)
-        }
+        closestFood.isEaten = true
+        this.energy += 30
+        if (this.energy > 100) this.energy = 100
       }
     } else {
+      // если еды нет в пределах досягаемости — блуждаем
       this.randomStep(simulationSpeed)
     }
   }
