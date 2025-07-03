@@ -89,6 +89,21 @@
         />
       </div>
 
+      <div class="current-counts" style="margin-top: 16px">
+        <h3>Текущее состояние</h3>
+        <p>Жертвы: {{ currentPreyCount }}</p>
+        <p>Хищники: {{ currentHunterCount }}</p>
+      </div>
+
+      <div v-if="selectedEntity">
+        <h3>Выбранный объект</h3>
+        <p>Тип: {{ selectedEntity.type }}</p>
+        <p>Энергия: {{ selectedEntity.energy?.toFixed(2) }}</p>
+        <p>Скорость: {{ selectedEntity.speed }}</p>
+        <p>Угол обзора: {{ ((selectedEntity.fov * 180) / Math.PI).toFixed(0) }}°</p>
+        <p>Дальность обзора: {{ selectedEntity.viewDistance }}</p>
+      </div>
+
       <button @click="toggleSimulation">{{ isRunning ? 'Пауза' : 'Старт' }}</button>
       <button @click="resetSimulation">Сбросить</button>
     </aside>
@@ -100,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, watchEffect } from 'vue'
 import Environment from '@/models/Environment'
 
 const width = 1200
@@ -125,6 +140,11 @@ const hunterViewDistance = ref(150)
 const initialHunterCount = ref(3)
 const hunterEnergyConsumption = ref(0.02)
 const hunterReproductionCooldown = ref(800)
+
+const currentPreyCount = ref(0)
+const currentHunterCount = ref(0)
+
+const selectedEntity = ref(null)
 
 const isRunning = ref(true)
 
@@ -194,6 +214,7 @@ function toggleSimulation() {
 
 function resetSimulation() {
   environment.value = createEnvironment()
+  updateCurrentCounts()
   isRunning.value = false
 }
 
@@ -259,18 +280,53 @@ function animate() {
   const ctx = canvas.value.getContext('2d')
   if (isRunning.value) {
     environment.value?.update(simulationSpeed.value)
+    updateCurrentCounts()
   }
   drawEnvironment(ctx, environment.value)
   animationFrameId = requestAnimationFrame(animate)
 }
 
+function updateCurrentCounts() {
+  if (!environment.value) {
+    currentPreyCount.value = 0
+    currentHunterCount.value = 0
+    return
+  }
+  currentPreyCount.value = environment.value.preys.length
+  currentHunterCount.value = environment.value.hunters.length
+}
+
+function onCanvasClick(event) {
+  const rect = canvas.value.getBoundingClientRect()
+  const clickX = event.clientX - rect.left
+  const clickY = event.clientY - rect.top
+
+  const entities = [
+    ...environment.value.hunters.map((h) => ({ ...h, type: 'Хищник' })),
+    ...environment.value.preys.map((p) => ({ ...p, type: 'Жертва' })),
+  ]
+
+  // Проверим попадание в радиус
+  const clicked = entities.find((entity) => Math.hypot(entity.x - clickX, entity.y - clickY) <= 6)
+
+  if (clicked) {
+    selectedEntity.value = clicked
+  } else {
+    selectedEntity.value = null
+  }
+}
+
 onMounted(() => {
   environment.value = createEnvironment()
+  updateCurrentCounts()
   isRunning.value = false
+
+  canvas.value.addEventListener('click', onCanvasClick)
 })
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationFrameId)
+  canvas.value.removeEventListener('click', onCanvasClick)
 })
 </script>
 
