@@ -1,5 +1,13 @@
 export default class Hunter {
-  constructor(x, y, speed = 0.3, fov = 90, viewDistance = 150, energyConsumption = 0.07) {
+  constructor(
+    x,
+    y,
+    speed = 0.3,
+    fov = 90,
+    viewDistance = 150,
+    energyConsumption = 0.07,
+    reproductionCooldownTime = 800,
+  ) {
     this.x = x
     this.y = y
     this.speed = speed
@@ -10,7 +18,8 @@ export default class Hunter {
     this.energy = 90 // стартовая энергия
     this.energyConsumption = energyConsumption
     this.isDead = false
-    this.reproductionCooldown = 1000
+    this.reproductionCooldown = reproductionCooldownTime
+    this.reproductionCooldownTime = reproductionCooldownTime
   }
 
   move(width, height, preys, simulationSpeed = 1) {
@@ -22,40 +31,27 @@ export default class Hunter {
 
     // Если энергия меньше 90%, охотимся
     if (this.energy < 90) {
-      // Ищем ближайшую видимую жертву
-      const visible = preys.filter((p) => this.isInFOV(p.x, p.y, this.viewDistance))
+      // Ищем видимых и не прячущихся жертв
+      const visible = preys.filter((p) => !p.isHiding && this.isInFOV(p.x, p.y, this.viewDistance))
       if (visible.length > 0) {
-        let closest = null,
-          minD = Infinity
-        for (const p of visible) {
-          const dx = p.x - this.x,
-            dy = p.y - this.y,
-            d = Math.hypot(dx, dy)
-          if (d < minD) {
-            minD = d
-            closest = p
-          }
-        }
-        if (closest) {
-          const dx = closest.x - this.x,
-            dy = closest.y - this.y,
-            dist = Math.hypot(dx, dy)
-          this.direction = Math.atan2(dy, dx)
-          this.x += (dx / dist) * this.speed * simulationSpeed
-          this.y += (dy / dist) * this.speed * simulationSpeed
+        const closest = visible.reduce((a, b) =>
+          Math.hypot(a.x - this.x, a.y - this.y) < Math.hypot(b.x - this.x, b.y - this.y) ? a : b,
+        )
+        const dx = closest.x - this.x
+        const dy = closest.y - this.y
+        const dist = Math.hypot(dx, dy)
+        this.direction = Math.atan2(dy, dx)
+        this.x += (dx / dist) * this.speed * simulationSpeed
+        this.y += (dy / dist) * this.speed * simulationSpeed
 
-          // Если приблизился достаточно, "съедаем" жертву и восстанавливаем энергию
-          if (dist < radius + 2) {
-            closest.isDead = true // жертва умирает
-            const eatEnergy = 50
-            this.energy = Math.min(this.energy + eatEnergy, 100)
-          }
+        if (dist < radius + 2) {
+          closest.isDead = true
+          this.energy = Math.min(this.energy + 50, 100)
         }
       } else {
         this.randomStep(simulationSpeed)
       }
     } else {
-      // Энергия > 90%, просто гуляем
       this.randomStep(simulationSpeed)
     }
 
@@ -93,7 +89,7 @@ export default class Hunter {
     this.energy -= distMoved * this.energyConsumption
     if (this.energy <= 0) {
       this.energy = 0
-      this.isDead = true // умираем
+      this.isDead = true
     }
 
     //Кулдаун размножения
@@ -122,7 +118,7 @@ export default class Hunter {
     const energyCost = 50
     if (this.isDead) return null
     if (this.reproductionCooldown === 0 && this.energy >= energyCost) {
-      this.reproductionCooldown = 800
+      this.reproductionCooldown = this.reproductionCooldownTime
       this.energy -= energyCost
 
       const offsetX = (Math.random() - 0.5) * 20
@@ -133,7 +129,8 @@ export default class Hunter {
       baby.speed = this.speed
       baby.fov = this.fov
       baby.viewDistance = this.viewDistance
-      baby.reproductionCooldown = 500
+      baby.reproductionCooldown = this.reproductionCooldownTime
+      baby.reproductionCooldownTime = this.reproductionCooldownTime
       return baby
     }
     return null

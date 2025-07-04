@@ -16,6 +16,10 @@
         <label>Скорость восстановления травы: {{ grassRegenerationRate.toFixed(3) }}</label>
         <input type="range" min="0" max="0.1" step="0.001" v-model.number="grassRegenerationRate" />
       </div>
+      <div class="control-group">
+        <label>Количество зон укрытий: {{ initialShelterZoneCount }}</label>
+        <input type="range" min="0" max="10" step="1" v-model.number="initialShelterZoneCount" />
+      </div>
 
       <h3>Жертвы</h3>
       <div class="control-group">
@@ -106,6 +110,7 @@
         <p>Скорость: {{ selectedEntity.speed }}</p>
         <p>Угол обзора: {{ ((selectedEntity.fov * 180) / Math.PI).toFixed(0) }}°</p>
         <p>Дальность обзора: {{ selectedEntity.viewDistance }}</p>
+        <p>{{ selectedEntity.reproductionCooldown }}</p>
       </div>
 
       <button @click="toggleSimulation">{{ isRunning ? 'Пауза' : 'Старт' }}</button>
@@ -146,6 +151,8 @@ const hunterReproductionCooldown = ref(800)
 const initialGrassZoneCount = ref(3)
 const grassRegenerationRate = ref(0.02)
 
+const initialShelterZoneCount = ref(2)
+
 const currentPreyCount = ref(0)
 const currentHunterCount = ref(0)
 
@@ -161,6 +168,7 @@ function createEnvironment() {
     initialHunterCount.value,
     initialGrassZoneCount.value,
     grassRegenerationRate.value,
+    initialShelterZoneCount.value,
   )
   env.preys.forEach((prey) => {
     prey.speed = preySpeed.value
@@ -168,6 +176,7 @@ function createEnvironment() {
     prey.viewDistance = preyViewDistance.value
     prey.energyConsumption = preyEnergyConsumption.value
     prey.reproductionCooldown = preyReproductionCooldown.value
+    prey.reproductionCooldownTime = preyReproductionCooldown.value
   })
   env.hunters.forEach((hunter) => {
     hunter.speed = hunterSpeed.value
@@ -175,6 +184,7 @@ function createEnvironment() {
     hunter.viewDistance = hunterViewDistance.value
     hunter.energyConsumption = hunterEnergyConsumption.value
     hunter.reproductionCooldown = hunterReproductionCooldown.value
+    hunter.reproductionCooldownTime = hunterReproductionCooldown.value
   })
   return env
 }
@@ -208,7 +218,13 @@ watch(
 )
 
 watch(
-  [initialPreyCount, initialHunterCount, , initialGrassZoneCount, grassRegenerationRate],
+  [
+    initialPreyCount,
+    initialHunterCount,
+    initialGrassZoneCount,
+    grassRegenerationRate,
+    initialShelterZoneCount,
+  ],
   () => {
     resetSimulation()
   },
@@ -239,6 +255,21 @@ function drawEnvironment(ctx, env) {
         ctx.arc(food.x, food.y, 3, 0, Math.PI * 2)
         ctx.fill()
       }
+    }
+  }
+
+  if (env.shelterZones) {
+    for (const zone of env.shelterZones) {
+      ctx.fillStyle = 'rgba(100, 100, 255, 0.2)'
+      ctx.beginPath()
+      ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.strokeStyle = 'rgba(100, 100, 255, 0.4)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2)
+      ctx.stroke()
     }
   }
 

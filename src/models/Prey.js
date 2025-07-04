@@ -1,5 +1,13 @@
 export default class Prey {
-  constructor(x, y, speed = 0.4, fov = 120, viewDistance = 150, energyConsumption = 0.05) {
+  constructor(
+    x,
+    y,
+    speed = 0.4,
+    fov = 120,
+    viewDistance = 150,
+    energyConsumption = 0.05,
+    reproductionCooldownTime = 500,
+  ) {
     this.x = x
     this.y = y
     this.speed = speed
@@ -10,42 +18,83 @@ export default class Prey {
     this.energy = 80 // стартовая энергия
     this.energyConsumption = energyConsumption
     this.isDead = false
-    this.reproductionCooldown = 1000
+    this.reproductionCooldown = reproductionCooldownTime
+    this.reproductionCooldownTime = reproductionCooldownTime
     this.state = 'wander' // состояния: wander, hungry, seekFood
+
+    this.isHiding = false
+    this.hideTime = 0
   }
 
-  move(width, height, hunters, grassZones, simulationSpeed = 1) {
-    if (this.isDead) return // мёртвый не двигается
+  move(width, height, hunters, grassZones, shelterZones, simulationSpeed = 1) {
+    if (this.isDead) return
 
     const radius = 6
     let oldX = this.x
     let oldY = this.y
-    // 1. Решаем, куда бежать
+
+    if (this.isHiding) {
+      this.hideTime++
+      if (this.hideTime > 100) {
+        this.isHiding = false
+        this.hideTime = 0
+      }
+      // Прикрылись — почти не двигаемся и не тратим энергию
+      this.energy -= 0.001 * simulationSpeed
+      if (this.energy < 0) {
+        this.energy = 0
+        this.isDead = true
+      }
+      return
+    }
+
+    // 1. Проверяем наличие хищников
     const visibleHunters = hunters.filter((h) => this.isInFOV(h.x, h.y, this.viewDistance))
     if (visibleHunters.length > 0) {
-      // бежим от ближайшего
-      let closest = null,
-        minD = Infinity
-      for (const h of visibleHunters) {
-        const dx = h.x - this.x,
-          dy = h.y - this.y,
-          d = Math.hypot(dx, dy)
-        if (d < minD) {
-          minD = d
-          closest = h
+      // Ищем ближайшее убежище
+      let closestShelter = null
+      let minD = Infinity
+      for (const shelter of shelterZones) {
+        const dx = shelter.x - this.x
+        const dy = shelter.y - this.y
+        const dist = Math.hypot(dx, dy)
+        if (dist < minD) {
+          minD = dist
+          closestShelter = shelter
         }
       }
-      if (closest) {
-        const dx = this.x - closest.x,
-          dy = this.y - closest.y,
-          dist = Math.hypot(dx, dy)
+
+      if (closestShelter) {
+        // Бежим в убежище
+        const dx = closestShelter.x - this.x
+        const dy = closestShelter.y - this.y
+        const dist = Math.hypot(dx, dy)
         this.direction = Math.atan2(dy, dx)
         this.x += (dx / dist) * this.speed * simulationSpeed
         this.y += (dy / dist) * this.speed * simulationSpeed
-        this.state = 'wander' // при угрозе — игнорируем еду
+
+        // Если дошли — прячемся
+        if (dist < closestShelter.radius - radius) {
+          this.isHiding = true
+          this.hideTime = 0
+          return
+        }
+      } else {
+        // Убегаем от ближайшего хищника
+        const closest = visibleHunters.reduce((a, b) =>
+          Math.hypot(a.x - this.x, a.y - this.y) < Math.hypot(b.x - this.x, b.y - this.y) ? a : b,
+        )
+        const dx = this.x - closest.x
+        const dy = this.y - closest.y
+        const dist = Math.hypot(dx, dy)
+        this.direction = Math.atan2(dy, dx)
+        this.x += (dx / dist) * this.speed * simulationSpeed
+        this.y += (dy / dist) * this.speed * simulationSpeed
       }
+
+      this.state = 'wander'
     } else {
-      // нет хищников — меняем состояние по энергии
+      // Нет хищников — обычное поведение
       if (this.energy < 20) {
         this.state = 'seekFood'
       } else if (this.energy > 30) {
@@ -54,18 +103,15 @@ export default class Prey {
         this.state = 'hungry'
       }
 
-      // поведение по состоянию
       if (this.state === 'seekFood') {
         this.seekFoodOrWander(grassZones, simulationSpeed)
       } else if (this.state === 'hungry') {
-        // В состоянии "голодна" — с 50% вероятностью ищем еду, иначе гуляем
         if (Math.random() < 0.5) {
           this.seekFoodOrWander(grassZones, simulationSpeed)
         } else {
           this.randomStep(simulationSpeed)
         }
       } else {
-        // wander
         this.randomStep(simulationSpeed)
       }
     }
@@ -90,16 +136,15 @@ export default class Prey {
       this.direction = -this.direction + (Math.random() * 0.4 - 0.2)
       bounced = true
     }
-    this.direction = ((this.direction % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
     if (bounced) {
       this.x += Math.cos(this.direction) * this.speed * simulationSpeed
       this.y += Math.sin(this.direction) * this.speed * simulationSpeed
     }
 
-    // 3. небольшой шум в направлении
+    // 3. Шум
     this.direction += (Math.random() - 0.5) * 0.3
 
-    // Тратим энергию за пройденное расстояние
+    // Расход энергии
     const distMoved = Math.hypot(this.x - oldX, this.y - oldY)
     this.energy -= distMoved * this.energyConsumption
     if (this.energy <= 0) {
@@ -107,26 +152,19 @@ export default class Prey {
       this.isDead = true
     }
 
-    //Кулдаун для размножения
-    if (this.reproductionCooldown > 0) {
-      this.reproductionCooldown--
-    }
+    if (this.reproductionCooldown > 0) this.reproductionCooldown--
   }
 
   // Метод для поиска еды или случайного блуждания
   seekFoodOrWander(grassZones, simulationSpeed) {
     let closestFood = null
-    let closestZone = null
     let minD = Infinity
-
-    // Найти ближайший кусочек еды среди всех зон
     for (const zone of grassZones) {
       for (const food of zone.foodItems) {
         const d = Math.hypot(food.x - this.x, food.y - this.y)
         if (d < minD && d < this.viewDistance) {
           minD = d
           closestFood = food
-          closestZone = zone
         }
       }
     }
@@ -153,6 +191,7 @@ export default class Prey {
 
   // Проверяем, видно ли цель в поле зрения
   isInFOV(targetX, targetY, maxDistance = this.viewDistance) {
+    if (this.isHiding) return false
     const dx = targetX - this.x
     const dy = targetY - this.y
     const dist = Math.hypot(dx, dy)
@@ -172,9 +211,9 @@ export default class Prey {
 
   tryReproduce() {
     const energyCost = 40
-    if (this.isDead) return null
+    if (this.isDead || this.isHiding) return null
     if (this.reproductionCooldown <= 0 && this.energy >= energyCost) {
-      this.reproductionCooldown = 500 // например, 500 кадров до следующего размножения
+      this.reproductionCooldown = this.reproductionCooldownTime
       this.energy -= energyCost
 
       // Создаём потомка рядом
@@ -186,7 +225,8 @@ export default class Prey {
       baby.speed = this.speed
       baby.fov = this.fov
       baby.viewDistance = this.viewDistance
-      baby.reproductionCooldown = 500
+      baby.reproductionCooldown = this.reproductionCooldownTime
+      baby.reproductionCooldownTime = this.reproductionCooldownTime
       return baby
     }
     return null

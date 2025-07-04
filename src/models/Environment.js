@@ -1,6 +1,7 @@
 import Prey from './Prey'
 import Hunter from './Hunter'
 import GrassZone from './GrassZone'
+import ShelterZone from './ShelterZone'
 
 export default class Environment {
   constructor(
@@ -10,6 +11,7 @@ export default class Environment {
     hunterCount = 3,
     grassZoneCount = 3,
     grassRegenerationRate = 0.02,
+    shelterZoneCount = 2,
   ) {
     this.width = width
     this.height = height
@@ -32,6 +34,13 @@ export default class Environment {
 
       return new GrassZone(x, y, radius, maxFood, grassRegenerationRate)
     })
+
+    this.shelterZones = Array.from({ length: shelterZoneCount }, () => {
+      const radius = 30 + Math.random() * 50
+      const x = radius + Math.random() * (width - radius * 2)
+      const y = radius + Math.random() * (height - radius * 2)
+      return new ShelterZone(x, y, radius)
+    })
   }
 
   update(simulationSpeed = 1) {
@@ -50,7 +59,14 @@ export default class Environment {
     const newPreys = []
     for (const prey of this.preys) {
       if (!prey.isDead) {
-        prey.move(this.width, this.height, this.hunters, this.grassZones, simulationSpeed)
+        prey.move(
+          this.width,
+          this.height,
+          this.hunters,
+          this.grassZones,
+          this.shelterZones,
+          simulationSpeed,
+        )
         const baby = prey.tryReproduce()
         if (baby) {
           newPreys.push(baby)
@@ -62,17 +78,13 @@ export default class Environment {
     this.hunters = this.hunters.filter((h) => !h.isDead)
     this.preys = this.preys.filter((p) => !p.isDead)
 
-    // 4. Убираем съеденные кусочки еды
+    // 4. Убираем съеденные кусочки еды и работаем с зонами
     for (const zone of this.grassZones) {
       zone.foodItems = zone.foodItems.filter((item) => !item.isEaten)
-    }
-
-    // 5. Трава (Зоны)
-    for (const zone of this.grassZones) {
       zone.regenerate()
     }
 
-    // 6. Добавление потомков
+    // 5. Добавление потомков
     this.preys.push(...newPreys)
     this.hunters.push(...newHunters)
   }
