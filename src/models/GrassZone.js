@@ -1,20 +1,19 @@
 export default class GrassZone {
-  constructor(x, y, radius, maxFood) {
+  constructor(x, y, radius, maxFood, regenerationRate = 0.02) {
     this.x = x
     this.y = y
     this.radius = radius
     this.maxFood = maxFood
     this.food = maxFood
-    this.foodItems = [] // ← новые объекты еды
+    this.foodItems = []
+    this.regenerationRate = regenerationRate
   }
 
   regenerate() {
-    // старое восстановление общего количества еды
     if (this.food < this.maxFood) {
-      this.food += 0.02
+      this.food += this.regenerationRate
     }
-    // новая часть: иногда добавляем еду в виде объектов
-    if (this.foodItems.length < this.maxFood / 2 && Math.random() < 0.02) {
+    if (this.foodItems.length < this.maxFood / 2 && Math.random() < this.regenerationRate) {
       this.spawnFoodItem()
     }
   }

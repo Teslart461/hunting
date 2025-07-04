@@ -3,7 +3,14 @@ import Hunter from './Hunter'
 import GrassZone from './GrassZone'
 
 export default class Environment {
-  constructor(width, height, preyCount = 30, hunterCount = 3, grassZoneCount = 3) {
+  constructor(
+    width,
+    height,
+    preyCount = 30,
+    hunterCount = 3,
+    grassZoneCount = 3,
+    grassRegenerationRate = 0.02,
+  ) {
     this.width = width
     this.height = height
     this.preys = Array.from(
@@ -17,11 +24,13 @@ export default class Environment {
 
     // Случайные зоны травы
     this.grassZones = Array.from({ length: grassZoneCount }, () => {
-      const x = Math.random() * width
-      const y = Math.random() * height
       const radius = 50 + Math.random() * 100 // размер от 50 до 150
       const maxFood = 50 + Math.floor(Math.random() * 100) // еда от 50 до 150
-      return new GrassZone(x, y, radius, maxFood)
+
+      const x = radius + Math.random() * (width - radius * 2)
+      const y = radius + Math.random() * (height - radius * 2)
+
+      return new GrassZone(x, y, radius, maxFood, grassRegenerationRate)
     })
   }
 

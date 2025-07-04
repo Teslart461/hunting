@@ -12,6 +12,10 @@
         <label>Количество зон травы: {{ initialGrassZoneCount }}</label>
         <input type="range" min="1" max="10" step="1" v-model.number="initialGrassZoneCount" />
       </div>
+      <div class="control-group">
+        <label>Скорость восстановления травы: {{ grassRegenerationRate.toFixed(3) }}</label>
+        <input type="range" min="0" max="0.1" step="0.001" v-model.number="grassRegenerationRate" />
+      </div>
 
       <h3>Жертвы</h3>
       <div class="control-group">
@@ -125,8 +129,6 @@ const environment = ref(null)
 
 const simulationSpeed = ref(1.0)
 
-const initialGrassZoneCount = ref(3)
-
 const preySpeed = ref(0.4)
 const preyFov = ref(120)
 const preyViewDistance = ref(150)
@@ -140,6 +142,9 @@ const hunterViewDistance = ref(150)
 const initialHunterCount = ref(3)
 const hunterEnergyConsumption = ref(0.02)
 const hunterReproductionCooldown = ref(800)
+
+const initialGrassZoneCount = ref(3)
+const grassRegenerationRate = ref(0.02)
 
 const currentPreyCount = ref(0)
 const currentHunterCount = ref(0)
@@ -155,6 +160,7 @@ function createEnvironment() {
     initialPreyCount.value,
     initialHunterCount.value,
     initialGrassZoneCount.value,
+    grassRegenerationRate.value,
   )
   env.preys.forEach((prey) => {
     prey.speed = preySpeed.value
@@ -201,9 +207,12 @@ watch(
   },
 )
 
-watch([initialPreyCount, initialHunterCount, , initialGrassZoneCount], () => {
-  resetSimulation()
-})
+watch(
+  [initialPreyCount, initialHunterCount, , initialGrassZoneCount, grassRegenerationRate],
+  () => {
+    resetSimulation()
+  },
+)
 
 function toggleSimulation() {
   isRunning.value = !isRunning.value
@@ -225,7 +234,7 @@ function drawEnvironment(ctx, env) {
   if (env.grassZones) {
     for (const zone of env.grassZones) {
       for (const food of zone.foodItems) {
-        ctx.fillStyle = 'yellow'
+        ctx.fillStyle = 'lime'
         ctx.beginPath()
         ctx.arc(food.x, food.y, 3, 0, Math.PI * 2)
         ctx.fill()
