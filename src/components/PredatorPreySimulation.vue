@@ -49,6 +49,16 @@
         />
       </div>
       <div class="control-group">
+        <label>Время в укрытии: {{ preyHidingSafeTimeThreshold }}</label>
+        <input
+          type="range"
+          min="10"
+          max="500"
+          step="10"
+          v-model.number="preyHidingSafeTimeThreshold"
+        />
+      </div>
+      <div class="control-group">
         <label>Время до размножения: {{ preyReproductionCooldown }}</label>
         <input
           type="range"
@@ -141,6 +151,7 @@ const preyViewDistance = ref(150)
 const initialPreyCount = ref(30)
 const preyEnergyConsumption = ref(0.01)
 const preyReproductionCooldown = ref(500)
+const preyHidingSafeTimeThreshold = ref(100)
 
 const hunterSpeed = ref(0.3)
 const hunterFov = ref(90)
@@ -178,6 +189,7 @@ function createEnvironment() {
     prey.energyConsumption = preyEnergyConsumption.value
     prey.reproductionCooldown = preyReproductionCooldown.value
     prey.reproductionCooldownTime = preyReproductionCooldown.value
+    prey.hidingSafeTimeThreshold = preyHidingSafeTimeThreshold.value
   })
   env.hunters.forEach((hunter) => {
     hunter.speed = hunterSpeed.value
@@ -191,7 +203,14 @@ function createEnvironment() {
 }
 
 watch(
-  [preySpeed, preyFov, preyViewDistance, preyEnergyConsumption, preyReproductionCooldown],
+  [
+    preySpeed,
+    preyFov,
+    preyViewDistance,
+    preyEnergyConsumption,
+    preyReproductionCooldown,
+    preyHidingSafeTimeThreshold,
+  ],
   () => {
     if (!environment.value) return
     environment.value.preys.forEach((prey) => {
@@ -200,6 +219,7 @@ watch(
       prey.viewDistance = preyViewDistance.value
       prey.energyConsumption = preyEnergyConsumption.value
       prey.reproductionCooldown = preyReproductionCooldown.value
+      prey.hidingSafeTimeThreshold = preyHidingSafeTimeThreshold.value
     })
   },
 )

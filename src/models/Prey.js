@@ -7,6 +7,7 @@ export default class Prey {
     viewDistance = 150,
     energyConsumption = 0.05,
     reproductionCooldownTime = 500,
+    hidingSafeTimeThreshold = 100,
   ) {
     this.x = x
     this.y = y
@@ -23,7 +24,8 @@ export default class Prey {
     this.state = 'wander' // состояния: wander, hungry, seekFood
 
     this.isHiding = false
-    this.hideTime = 0
+    this.safeTime = 0
+    this.hidingSafeTimeThreshold = hidingSafeTimeThreshold
   }
 
   move(width, height, hunters, grassZones, shelterZones, simulationSpeed = 1) {
@@ -33,14 +35,24 @@ export default class Prey {
     let oldX = this.x
     let oldY = this.y
 
+    // 1. Проверяем наличие хищников
+    const visibleHunters = hunters.filter((h) => this.isInFOV(h.x, h.y, this.viewDistance))
+
     if (this.isHiding) {
-      this.hideTime++
-      if (this.hideTime > 100) {
-        this.isHiding = false
-        this.hideTime = 0
+      if (visibleHunters.length === 0) {
+        this.safeTime++
+      } else {
+        this.safeTime = 0
       }
+
+      // Если уже долго спокойно, выходим
+      if (this.safeTime > this.hidingSafeTimeThreshold) {
+        this.isHiding = false
+        this.safeTime = 0
+      }
+
       // Прикрылись — почти не двигаемся и не тратим энергию
-      this.energy -= 0.001 * simulationSpeed
+      this.energy -= 0.005 * simulationSpeed
       if (this.energy < 0) {
         this.energy = 0
         this.isDead = true
@@ -48,8 +60,6 @@ export default class Prey {
       return
     }
 
-    // 1. Проверяем наличие хищников
-    const visibleHunters = hunters.filter((h) => this.isInFOV(h.x, h.y, this.viewDistance))
     if (visibleHunters.length > 0) {
       // Ищем ближайшее убежище
       let closestShelter = null
@@ -76,7 +86,6 @@ export default class Prey {
         // Если дошли — прячемся
         if (dist < closestShelter.radius - radius) {
           this.isHiding = true
-          this.hideTime = 0
           return
         }
       } else {
@@ -227,6 +236,7 @@ export default class Prey {
       baby.viewDistance = this.viewDistance
       baby.reproductionCooldown = this.reproductionCooldownTime
       baby.reproductionCooldownTime = this.reproductionCooldownTime
+      baby.hidingSafeTimeThreshold = this.hidingSafeTimeThreshold
       return baby
     }
     return null
