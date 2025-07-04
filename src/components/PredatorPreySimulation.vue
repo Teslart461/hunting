@@ -97,6 +97,15 @@
         />
       </div>
 
+      <button @click="toggleSimulation">{{ isRunning ? 'Пауза' : 'Старт' }}</button>
+      <button @click="resetSimulation">Сбросить</button>
+    </aside>
+
+    <main class="main-content">
+      <canvas ref="canvas" :width="width" :height="height" />
+    </main>
+
+    <aside class="info-panel">
       <div class="current-counts" style="margin-top: 16px">
         <h3>Текущее состояние</h3>
         <p>Жертвы: {{ currentPreyCount }}</p>
@@ -110,21 +119,13 @@
         <p>Скорость: {{ selectedEntity.speed }}</p>
         <p>Угол обзора: {{ ((selectedEntity.fov * 180) / Math.PI).toFixed(0) }}°</p>
         <p>Дальность обзора: {{ selectedEntity.viewDistance }}</p>
-        <p>{{ selectedEntity.reproductionCooldown }}</p>
       </div>
-
-      <button @click="toggleSimulation">{{ isRunning ? 'Пауза' : 'Старт' }}</button>
-      <button @click="resetSimulation">Сбросить</button>
     </aside>
-
-    <main class="main-content">
-      <canvas ref="canvas" :width="width" :height="height" />
-    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, watchEffect } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import Environment from '@/models/Environment'
 
 const width = 1200
@@ -386,6 +387,15 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   box-sizing: border-box;
   border-right: 1px solid #333;
+}
+
+.info-panel {
+  width: 220px;
+  padding: 16px;
+  background-color: #1e1e1e;
+  overflow-y: auto;
+  box-sizing: border-box;
+  border-left: 1px solid #333;
 }
 
 .control-group {
