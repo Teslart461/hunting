@@ -61,21 +61,38 @@ export default class Prey {
     }
 
     if (visibleHunters.length > 0) {
+      const closestHunter = visibleHunters.reduce((a, b) =>
+        Math.hypot(a.x - this.x, a.y - this.y) < Math.hypot(b.x - this.x, b.y - this.y) ? a : b,
+      )
+
       // Ищем ближайшее убежище
       let closestShelter = null
       let minD = Infinity
+
       for (const shelter of shelterZones) {
-        const dx = shelter.x - this.x
-        const dy = shelter.y - this.y
-        const dist = Math.hypot(dx, dy)
-        if (dist < minD) {
-          minD = dist
-          closestShelter = shelter
+        const dxShelter = shelter.x - this.x
+        const dyShelter = shelter.y - this.y
+        const distShelter = Math.hypot(dxShelter, dyShelter)
+
+        const dxHunter = closestHunter.x - this.x
+        const dyHunter = closestHunter.y - this.y
+
+        const angleToShelter = Math.atan2(dyShelter, dxShelter)
+        const angleToHunter = Math.atan2(dyHunter, dxHunter)
+        let diff = angleToShelter - angleToHunter
+        while (diff > Math.PI) diff -= 2 * Math.PI
+        while (diff < -Math.PI) diff += 2 * Math.PI
+
+        // Укрытие подходит, если оно не «спереди» у хищника или оно совсем близко к жертве
+        if (Math.abs(diff) > Math.PI / 3 || distShelter < 60) {
+          if (distShelter < minD) {
+            minD = distShelter
+            closestShelter = shelter
+          }
         }
       }
 
       if (closestShelter) {
-        // Бежим в убежище
         const dx = closestShelter.x - this.x
         const dy = closestShelter.y - this.y
         const dist = Math.hypot(dx, dy)
@@ -83,18 +100,14 @@ export default class Prey {
         this.x += (dx / dist) * this.speed * simulationSpeed
         this.y += (dy / dist) * this.speed * simulationSpeed
 
-        // Если дошли — прячемся
         if (dist < closestShelter.radius - radius) {
           this.isHiding = true
           return
         }
       } else {
         // Убегаем от ближайшего хищника
-        const closest = visibleHunters.reduce((a, b) =>
-          Math.hypot(a.x - this.x, a.y - this.y) < Math.hypot(b.x - this.x, b.y - this.y) ? a : b,
-        )
-        const dx = this.x - closest.x
-        const dy = this.y - closest.y
+        const dx = this.x - closestHunter.x
+        const dy = this.y - closestHunter.y
         const dist = Math.hypot(dx, dy)
         this.direction = Math.atan2(dy, dx)
         this.x += (dx / dist) * this.speed * simulationSpeed
@@ -234,6 +247,7 @@ export default class Prey {
       baby.speed = this.speed
       baby.fov = this.fov
       baby.viewDistance = this.viewDistance
+      baby.energyConsumption = this.energyConsumption
       baby.reproductionCooldown = this.reproductionCooldownTime
       baby.reproductionCooldownTime = this.reproductionCooldownTime
       baby.hidingSafeTimeThreshold = this.hidingSafeTimeThreshold

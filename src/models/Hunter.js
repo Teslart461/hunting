@@ -129,6 +129,7 @@ export default class Hunter {
       baby.speed = this.speed
       baby.fov = this.fov
       baby.viewDistance = this.viewDistance
+      baby.energyConsumption = this.energyConsumption
       baby.reproductionCooldown = this.reproductionCooldownTime
       baby.reproductionCooldownTime = this.reproductionCooldownTime
       return baby
