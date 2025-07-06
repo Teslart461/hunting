@@ -129,6 +129,7 @@
         <p>Скорость: {{ selectedEntity.speed }}</p>
         <p>Угол обзора: {{ ((selectedEntity.fov * 180) / Math.PI).toFixed(0) }}°</p>
         <p>Дальность обзора: {{ selectedEntity.viewDistance }}</p>
+        <p>Время до размножения: {{ selectedEntity.reproductionCooldown.toFixed(0) }}</p>
       </div>
     </aside>
   </div>

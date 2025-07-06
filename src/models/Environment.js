@@ -25,22 +25,56 @@ export default class Environment {
     )
 
     // Случайные зоны травы
-    this.grassZones = Array.from({ length: grassZoneCount }, () => {
-      const radius = 50 + Math.random() * 100 // размер от 50 до 150
-      const maxFood = 50 + Math.floor(Math.random() * 100) // еда от 50 до 150
+    this.grassZones = []
+    this.shelterZones = []
 
-      const x = radius + Math.random() * (width - radius * 2)
-      const y = radius + Math.random() * (height - radius * 2)
+    // Добавляем зоны травы
+    for (let i = 0; i < grassZoneCount; i++) {
+      let zone
+      let attempts = 0
+      do {
+        const radius = 50 + Math.random() * 100
+        const maxFood = 50 + Math.floor(Math.random() * 100)
+        const x = radius + Math.random() * (width - radius * 2)
+        const y = radius + Math.random() * (height - radius * 2)
+        zone = new GrassZone(x, y, radius, maxFood, grassRegenerationRate)
+        attempts++
+      } while (
+        this.checkOverlap(zone, [...this.grassZones, ...this.shelterZones]) &&
+        attempts < 100
+      )
+      this.grassZones.push(zone)
+    }
 
-      return new GrassZone(x, y, radius, maxFood, grassRegenerationRate)
-    })
+    // Добавляем укрытия
+    for (let i = 0; i < shelterZoneCount; i++) {
+      let shelter
+      let attempts = 0
+      do {
+        const radius = 30 + Math.random() * 50
+        const x = radius + Math.random() * (width - radius * 2)
+        const y = radius + Math.random() * (height - radius * 2)
+        shelter = new ShelterZone(x, y, radius)
+        attempts++
+      } while (
+        this.checkOverlap(shelter, [...this.grassZones, ...this.shelterZones]) &&
+        attempts < 100
+      )
+      this.shelterZones.push(shelter)
+    }
+  }
 
-    this.shelterZones = Array.from({ length: shelterZoneCount }, () => {
-      const radius = 30 + Math.random() * 50
-      const x = radius + Math.random() * (width - radius * 2)
-      const y = radius + Math.random() * (height - radius * 2)
-      return new ShelterZone(x, y, radius)
-    })
+  // Проверка, пересекается ли zone с другими зонами
+  checkOverlap(newZone, existingZones) {
+    for (const zone of existingZones) {
+      const dx = newZone.x - zone.x
+      const dy = newZone.y - zone.y
+      const distance = Math.hypot(dx, dy)
+      if (distance < newZone.radius + zone.radius) {
+        return true // Пересекаются
+      }
+    }
+    return false
   }
 
   update(simulationSpeed = 1) {

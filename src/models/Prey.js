@@ -26,6 +26,9 @@ export default class Prey {
     this.isHiding = false
     this.safeTime = 0
     this.hidingSafeTimeThreshold = hidingSafeTimeThreshold
+
+    this.closestFood = null
+    this.foodTargetUpdateCounter = 0
   }
 
   move(width, height, hunters, grassZones, shelterZones, simulationSpeed = 1) {
@@ -179,36 +182,46 @@ export default class Prey {
 
   // Метод для поиска еды или случайного блуждания
   seekFoodOrWander(grassZones, simulationSpeed) {
-    let closestFood = null
-    let minD = Infinity
-    for (const zone of grassZones) {
-      for (const food of zone.foodItems) {
-        const d = Math.hypot(food.x - this.x, food.y - this.y)
-        if (d < minD && d < this.viewDistance) {
-          minD = d
-          closestFood = food
-        }
-      }
+    // Обновляем цель еды раз в N тиков
+    if (this.foodTargetUpdateCounter <= 0 || !this.closestFood || this.closestFood.isEaten) {
+      this.closestFood = this.findClosestFood(grassZones)
+      this.foodTargetUpdateCounter = 10 // например, каждые 10 тиков
+    } else {
+      this.foodTargetUpdateCounter--
     }
 
-    // Если нашли — бежим к нему и, достигнув, помечаем isEaten
-    if (closestFood) {
-      const dx = closestFood.x - this.x
-      const dy = closestFood.y - this.y
+    if (this.closestFood) {
+      const dx = this.closestFood.x - this.x
+      const dy = this.closestFood.y - this.y
       const dist = Math.hypot(dx, dy)
       this.direction = Math.atan2(dy, dx)
       this.x += (dx / dist) * this.speed * simulationSpeed
       this.y += (dy / dist) * this.speed * simulationSpeed
 
-      // съесть, если достаточно близко
       if (dist < 5) {
-        closestFood.isEaten = true
+        this.closestFood.isEaten = true
         this.energy = Math.min(this.energy + 30, 100)
+        this.closestFood = null
       }
     } else {
-      // если еды нет в пределах досягаемости — блуждаем
       this.randomStep(simulationSpeed)
     }
+  }
+
+  findClosestFood(grassZones) {
+    let closest = null
+    let minD = Infinity
+    for (const zone of grassZones) {
+      for (const food of zone.foodItems) {
+        if (food.isEaten) continue
+        const d = Math.hypot(food.x - this.x, food.y - this.y)
+        if (d < minD && d < this.viewDistance) {
+          minD = d
+          closest = food
+        }
+      }
+    }
+    return closest
   }
 
   // Проверяем, видно ли цель в поле зрения
