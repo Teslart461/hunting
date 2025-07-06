@@ -18,8 +18,8 @@ export default class Hunter {
     this.energy = 90 // стартовая энергия
     this.energyConsumption = energyConsumption
     this.isDead = false
-    this.reproductionCooldown = reproductionCooldownTime
-    this.reproductionCooldownTime = reproductionCooldownTime
+    this.reproductionCooldown = reproductionCooldownTime // Текущее время до возможности размножения
+    this.reproductionCooldownTime = reproductionCooldownTime // Время между размножениями
   }
 
   move(width, height, preys, simulationSpeed = 1) {
@@ -34,24 +34,29 @@ export default class Hunter {
       // Ищем видимых и не прячущихся жертв
       const visible = preys.filter((p) => !p.isHiding && this.isInFOV(p.x, p.y, this.viewDistance))
       if (visible.length > 0) {
+        // Выбираем ближайшую жертву
         const closest = visible.reduce((a, b) =>
           Math.hypot(a.x - this.x, a.y - this.y) < Math.hypot(b.x - this.x, b.y - this.y) ? a : b,
         )
         const dx = closest.x - this.x
         const dy = closest.y - this.y
         const dist = Math.hypot(dx, dy)
+        // Поворачиваемся в её сторону и двигаемся к ней
         this.direction = Math.atan2(dy, dx)
         this.x += (dx / dist) * this.speed * simulationSpeed
         this.y += (dy / dist) * this.speed * simulationSpeed
 
+        // Если подошли достаточно близко — "съедаем" жертву
         if (dist < radius + 2) {
           closest.isDead = true
           this.energy = Math.min(this.energy + 50, 100)
         }
       } else {
+        // Жертв нет в поле зрения — двигаемся случайным образом
         this.randomStep(simulationSpeed)
       }
     } else {
+      // Энергии хватает — просто случайное движение
       this.randomStep(simulationSpeed)
     }
 
@@ -92,10 +97,11 @@ export default class Hunter {
       this.isDead = true
     }
 
-    //Кулдаун размножения
+    // Уменьшаем кулдаун до размножения
     if (this.reproductionCooldown > 0) this.reproductionCooldown--
   }
 
+  // Проверяем, видно ли цель в поле зрения
   isInFOV(targetX, targetY, maxDistance = this.viewDistance) {
     const dx = targetX - this.x,
       dy = targetY - this.y
@@ -121,11 +127,12 @@ export default class Hunter {
       this.reproductionCooldown = this.reproductionCooldownTime
       this.energy -= energyCost
 
+      // Создаём потомка рядом с родителем
       const offsetX = (Math.random() - 0.5) * 20
       const offsetY = (Math.random() - 0.5) * 20
       const baby = new Hunter(this.x + offsetX, this.y + offsetY)
       baby.energy = energyCost / 2
-      // копируем параметры родителя
+      // Копируем параметры родителя
       baby.speed = this.speed
       baby.fov = this.fov
       baby.viewDistance = this.viewDistance

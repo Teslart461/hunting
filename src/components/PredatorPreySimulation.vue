@@ -163,7 +163,6 @@ const hunterReproductionCooldown = ref(800)
 
 const initialGrassZoneCount = ref(3)
 const grassRegenerationRate = ref(0.02)
-
 const initialShelterZoneCount = ref(2)
 
 const currentPreyCount = ref(0)
@@ -173,6 +172,7 @@ const selectedEntity = ref(null)
 
 const isRunning = ref(true)
 
+// Создание среды с заданными параметрами
 function createEnvironment() {
   const env = new Environment(
     width,
@@ -183,6 +183,7 @@ function createEnvironment() {
     grassRegenerationRate.value,
     initialShelterZoneCount.value,
   )
+  // Установка параметров жертв
   env.preys.forEach((prey) => {
     prey.speed = preySpeed.value
     prey.fov = (preyFov.value * Math.PI) / 180
@@ -192,6 +193,7 @@ function createEnvironment() {
     prey.reproductionCooldownTime = preyReproductionCooldown.value
     prey.hidingSafeTimeThreshold = preyHidingSafeTimeThreshold.value
   })
+  // Установка параметров хищников
   env.hunters.forEach((hunter) => {
     hunter.speed = hunterSpeed.value
     hunter.fov = (hunterFov.value * Math.PI) / 180
@@ -203,6 +205,7 @@ function createEnvironment() {
   return env
 }
 
+// Автоматическое обновление параметров жертв при изменении
 watch(
   [
     preySpeed,
@@ -225,6 +228,7 @@ watch(
   },
 )
 
+// Автоматическое обновление параметров хищников при изменении
 watch(
   [hunterSpeed, hunterFov, hunterViewDistance, hunterEnergyConsumption, hunterReproductionCooldown],
   () => {
@@ -239,6 +243,7 @@ watch(
   },
 )
 
+// Сброс среды при изменении исходных параметров
 watch(
   [
     initialPreyCount,
@@ -252,6 +257,7 @@ watch(
   },
 )
 
+// Переключение состояния симуляции
 function toggleSimulation() {
   isRunning.value = !isRunning.value
   if (isRunning.value) {
@@ -259,16 +265,18 @@ function toggleSimulation() {
   }
 }
 
+// Сброс симуляции
 function resetSimulation() {
   environment.value = createEnvironment()
   updateCurrentCounts()
   isRunning.value = false
 }
 
+// Отрисовка всей среды
 function drawEnvironment(ctx, env) {
   ctx.clearRect(0, 0, env.width, env.height)
 
-  // рисуем зоны травы
+  // Зоны травы
   if (env.grassZones) {
     for (const zone of env.grassZones) {
       for (const food of zone.foodItems) {
@@ -280,6 +288,7 @@ function drawEnvironment(ctx, env) {
     }
   }
 
+  // Зоны укрытия
   if (env.shelterZones) {
     for (const zone of env.shelterZones) {
       ctx.fillStyle = 'rgba(100, 100, 255, 0.2)'
@@ -295,15 +304,18 @@ function drawEnvironment(ctx, env) {
     }
   }
 
+  // Жертвы
   for (const prey of env.preys) {
     drawEntity(ctx, prey, 'deepskyblue')
   }
 
+  // Хищники
   for (const hunter of env.hunters) {
     drawEntity(ctx, hunter, 'crimson')
   }
 }
 
+// Отрисовка отдельного объекта
 function drawEntity(ctx, entity, color) {
   const radius = 6
   const viewRadius = entity.viewDistance || 150
@@ -338,6 +350,7 @@ function drawEntity(ctx, entity, color) {
 
 let animationFrameId
 
+// Цикл анимации
 function animate() {
   const ctx = canvas.value.getContext('2d')
   if (isRunning.value) {
@@ -348,6 +361,7 @@ function animate() {
   animationFrameId = requestAnimationFrame(animate)
 }
 
+// Обновление количества объектов
 function updateCurrentCounts() {
   if (!environment.value) {
     currentPreyCount.value = 0
@@ -358,6 +372,7 @@ function updateCurrentCounts() {
   currentHunterCount.value = environment.value.hunters.length
 }
 
+// Обработка клика по canvas для выбора объекта
 function onCanvasClick(event) {
   const rect = canvas.value.getBoundingClientRect()
   const clickX = event.clientX - rect.left

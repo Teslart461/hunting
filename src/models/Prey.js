@@ -16,16 +16,16 @@ export default class Prey {
     this.viewDistance = viewDistance
     this.direction = Math.random() * 2 * Math.PI
 
-    this.energy = 80 // стартовая энергия
+    this.energy = 80 // Стартовая энергия
     this.energyConsumption = energyConsumption
     this.isDead = false
-    this.reproductionCooldown = reproductionCooldownTime
-    this.reproductionCooldownTime = reproductionCooldownTime
-    this.state = 'wander' // состояния: wander, hungry, seekFood
+    this.reproductionCooldown = reproductionCooldownTime // Текущее время до возможности размножения
+    this.reproductionCooldownTime = reproductionCooldownTime // Время между размножениями
+    this.state = 'wander' // Текущее состояния: wander, hungry, seekFood
 
     this.isHiding = false
     this.safeTime = 0
-    this.hidingSafeTimeThreshold = hidingSafeTimeThreshold
+    this.hidingSafeTimeThreshold = hidingSafeTimeThreshold // Сколько тиков нужно провести в безопасности, чтобы выйти из укрытия
 
     this.closestFood = null
     this.foodTargetUpdateCounter = 0
@@ -64,6 +64,7 @@ export default class Prey {
     }
 
     if (visibleHunters.length > 0) {
+      // Есть хищники: находим ближайшего
       const closestHunter = visibleHunters.reduce((a, b) =>
         Math.hypot(a.x - this.x, a.y - this.y) < Math.hypot(b.x - this.x, b.y - this.y) ? a : b,
       )
@@ -86,7 +87,7 @@ export default class Prey {
         while (diff > Math.PI) diff -= 2 * Math.PI
         while (diff < -Math.PI) diff += 2 * Math.PI
 
-        // Укрытие подходит, если оно не «спереди» у хищника или оно совсем близко к жертве
+        // Укрытие подходит, если оно не находится прямо между жертвой и хищником или оно совсем близко
         if (Math.abs(diff) > Math.PI / 3 || distShelter < 60) {
           if (distShelter < minD) {
             minD = distShelter
@@ -96,6 +97,7 @@ export default class Prey {
       }
 
       if (closestShelter) {
+        // Двигаемся к укрытию
         const dx = closestShelter.x - this.x
         const dy = closestShelter.y - this.y
         const dist = Math.hypot(dx, dy)
@@ -103,6 +105,7 @@ export default class Prey {
         this.x += (dx / dist) * this.speed * simulationSpeed
         this.y += (dy / dist) * this.speed * simulationSpeed
 
+        // Если дошли до укрытия — прячемся
         if (dist < closestShelter.radius - radius) {
           this.isHiding = true
           return
@@ -177,6 +180,7 @@ export default class Prey {
       this.isDead = true
     }
 
+    // Уменьшаем кулдаун размножения
     if (this.reproductionCooldown > 0) this.reproductionCooldown--
   }
 
@@ -185,12 +189,13 @@ export default class Prey {
     // Обновляем цель еды раз в N тиков
     if (this.foodTargetUpdateCounter <= 0 || !this.closestFood || this.closestFood.isEaten) {
       this.closestFood = this.findClosestFood(grassZones)
-      this.foodTargetUpdateCounter = 10 // например, каждые 10 тиков
+      this.foodTargetUpdateCounter = 10 // Каждые 10 тиков
     } else {
       this.foodTargetUpdateCounter--
     }
 
     if (this.closestFood) {
+      // Идём к еде
       const dx = this.closestFood.x - this.x
       const dy = this.closestFood.y - this.y
       const dist = Math.hypot(dx, dy)
@@ -198,12 +203,14 @@ export default class Prey {
       this.x += (dx / dist) * this.speed * simulationSpeed
       this.y += (dy / dist) * this.speed * simulationSpeed
 
+      // Если дошли до еды
       if (dist < 5) {
         this.closestFood.isEaten = true
         this.energy = Math.min(this.energy + 30, 100)
         this.closestFood = null
       }
     } else {
+      // Если еды не нашли — просто блуждаем
       this.randomStep(simulationSpeed)
     }
   }
@@ -251,12 +258,12 @@ export default class Prey {
       this.reproductionCooldown = this.reproductionCooldownTime
       this.energy -= energyCost
 
-      // Создаём потомка рядом
+      // Создаём потомка рядом с родителем
       const offsetX = (Math.random() - 0.5) * 20
       const offsetY = (Math.random() - 0.5) * 20
       const baby = new Prey(this.x + offsetX, this.y + offsetY)
       baby.energy = energyCost / 2
-      // копируем параметры родителя
+      // Копируем параметры родителя
       baby.speed = this.speed
       baby.fov = this.fov
       baby.viewDistance = this.viewDistance

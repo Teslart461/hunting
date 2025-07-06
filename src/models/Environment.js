@@ -15,10 +15,12 @@ export default class Environment {
   ) {
     this.width = width
     this.height = height
+
     this.preys = Array.from(
       { length: preyCount },
       () => new Prey(Math.random() * width, Math.random() * height),
     )
+
     this.hunters = Array.from(
       { length: hunterCount },
       () => new Hunter(Math.random() * width, Math.random() * height),
@@ -112,7 +114,7 @@ export default class Environment {
     this.hunters = this.hunters.filter((h) => !h.isDead)
     this.preys = this.preys.filter((p) => !p.isDead)
 
-    // 4. Убираем съеденные кусочки еды и работаем с зонами
+    // 4. Обновляем зоны травы
     for (const zone of this.grassZones) {
       zone.foodItems = zone.foodItems.filter((item) => !item.isEaten)
       zone.regenerate()
